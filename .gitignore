@@ -1,6 +1,7 @@
 .DS_Store
 bitcoin-historical-data/
 secret.txt
+*.csv
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
