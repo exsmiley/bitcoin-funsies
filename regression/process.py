@@ -1,10 +1,12 @@
 import csv
 import tqdm
+import os
+dir = os.path.dirname(__file__)
 
 def remove_irrelevant_rows():
-    with open('../btcusd.csv') as f:
+    with open(os.path.join(dir, '../btcusd.csv')) as f:
         reader = csv.DictReader(f, delimiter=',')
-        with open('../btcusd2.csv', 'w') as f2:
+        with open(os.path.join(dir, '../btcusd2.csv', 'w')) as f2:
             fieldnames = ['Low', 'High', 'Open', 'Close', 'Volume_(BTC)']
             writer = csv.DictWriter(f2, fieldnames=fieldnames)
             writer.writeheader()
@@ -16,9 +18,9 @@ def remove_irrelevant_rows():
 def normalize():
     price_max = 6000
     vol_max = 2000
-    with open('../btcusd2.csv') as f:
+    with open(os.path.join(dir, '../btcusd2.csv')) as f:
         reader = csv.DictReader(f, delimiter=',')
-        with open('../norm.csv', 'w') as f2:
+        with open(os.path.join(dir, '../norm.csv', 'w')) as f2:
             fieldnames = ['Low', 'High', 'Open', 'Close', 'Volume']
             writer = csv.DictWriter(f2, fieldnames=fieldnames)
             writer.writeheader()
@@ -37,7 +39,7 @@ def load_data():
     '''Can fit into RAM since just like 125MB'''
     data = []
     print 'Loading Historical Data...'
-    with open('../norm.csv') as f:
+    with open(os.path.join(dir, '../norm.csv')) as f:
         reader = csv.reader(f)
         reader.next()  # read out the headers...
 
@@ -45,3 +47,4 @@ def load_data():
             data.append(map(float, row))
 
     print 'Finished Loading Data!'
+    return data
