@@ -1,10 +1,12 @@
 import tqdm
+import time
+import random
 import numpy as np
 import pandas as pd
 
-from process import load_data
+from process import load_data, only_close, load_2017, load_daily
 from sklearn.preprocessing import normalize
-
+from keras.models import load_model
 from keras.models import Sequential, Model
 from keras.layers import LSTM, Dropout, Dense, Input
 from keras.layers import Conv1D, AveragePooling1D, Flatten, MaxPooling1D
@@ -19,21 +21,80 @@ def get_data():
             x_i.pop(-1)
 
 
+def get_2017():
+    print 'loading only 2017...'
+    data = load_2017()
+    X = []
+    y = []
+
+    x_run = []
+    for num in tqdm.tqdm(data):
+        x_run.append(num)
+        if len(x_run) > 400:
+            X.append(x_run[:400])
+            y.append(x_run[400])
+            x_run.pop(0)
+
+    X = np.array(X).reshape(-1, 400, 1)
+    y = np.array(y).reshape(-1, 1)
+    print 'loaded!'
+    return X, y
+
+
+def get_close():
+    print 'loading close...'
+    data = only_close()
+    X = []
+    y = []
+
+    x_run = []
+    for num in tqdm.tqdm(data):
+        x_run.append(num)
+        if len(x_run) > 400:
+            X.append(x_run[:400])
+            y.append(x_run[400])
+            x_run.pop(0)
+
+    X = np.array(X).reshape(-1, 400, 1)
+    y = np.array(y).reshape(-1, 1)
+    print 'loaded!'
+    return X, y
+
+
+def get_daily():
+    print 'loading daily...'
+    data = load_daily()
+    X = []
+    y = []
+
+    x_run = []
+    for num in tqdm.tqdm(data):
+        x_run.append(num)
+        if len(x_run) > 7:
+            X.append(x_run[:7])
+            y.append(x_run[7][0])
+            x_run.pop(0)
+
+    X = np.array(X).reshape(-1, 7, 4)
+    y = np.array(y).reshape(-1, 1)
+    print 'loaded!'
+    return X, y
+
+
 def toy_data():
     import random
     X = []
     y = []
 
     for i in tqdm.tqdm(xrange(4000)):
-        nums = [random.randint(1, 10) for i in xrange(5)]
-        x = [[random.randint(1, 10) for i in xrange(5)]]
+        num = random.randint(1, 10)
+        x = [random.randint(1, 10)]
+        exp = random.randint(1, 3)
         for j in xrange(400):
-            x_i = []
-            for k, num in enumerate(nums):
-                x_i.append(x[0][k]*num*(j+1))
+            x_i = x[0]*num*(j+1)**exp
             x.append(x_i)
         x = np.array(x).reshape(-1, 1)
-        x = list(normalize(x, axis=0).reshape(401, 5))
+        x = list(normalize(x, axis=0).reshape(401, 1))
 
         y_i = x.pop()
         X.append(x)
@@ -53,7 +114,7 @@ def lstm_model():
     model.add(Dense(1000, activation='relu'))
     model.add(Dense(500, activation='tanh'))
     model.add(Dense(200, activation='relu'))
-    model.add(Dense(5, activation='linear'))
+    model.add(Dense(1, activation='linear'))
     model.compile(loss='mean_squared_error',
               optimizer='adam',
               metrics=['accuracy'])
@@ -67,30 +128,78 @@ def cnn_model():
     [ 0.02566578  0.00380234  0.05133156  0.04562805  0.04562805]
     '''
     model = Sequential()
-    model.add(Conv1D(32, 3, input_shape=(400, 5), activation='relu', padding='same'))
-    model.add(MaxPooling1D())
+    model.add(Conv1D(16, 3, input_shape=(400, 1), padding='same'))
+    model.add(AveragePooling1D())
+    # model.add(Conv1D(32, 3, input_shape=(400, 1), activation='relu', padding='same'))
+    # model.add(MaxPooling1D())
     model.add(Flatten())
-    model.add(Dense(1000, activation='relu'))
-    model.add(Dense(500, activation='relu'))
-    model.add(Dense(1000, activation='relu'))
-    model.add(Dense(500, activation='relu'))
-    model.add(Dense(200, activation='relu'))
-    model.add(Dense(5, activation='linear'))
-    model.compile(loss='mean_squared_error',
-              optimizer='adam',
-              metrics=['accuracy'])
+    model.add(Dense(2000, activation='relu'))
+    # model.add(Dense(1000, activation='relu'))
+    # model.add(Dense(1000, activation='relu'))
+    # model.add(Dense(500, activation='relu'))
+    # model.add(Dense(100, activation='relu'))
+    model.add(Dense(1, activation='linear'))
+    # model.compile(loss='mean_absolute_percentage_error',
+    #           optimizer='adam',
+    #           metrics=['mae'])
+    return model
+
+def daily_cnn_model():
+    '''
+    acc: 0.9620
+    [[ 0.02803782  0.00446387  0.05051791  0.04457706  0.04525087]]
+    [ 0.02566578  0.00380234  0.05133156  0.04562805  0.04562805]
+    '''
+    model = Sequential()
+    model.add(Conv1D(16, 3, input_shape=(7, 4), padding='same'))
+    model.add(AveragePooling1D())
+    # model.add(Conv1D(32, 3, input_shape=(400, 1), activation='relu', padding='same'))
+    # model.add(MaxPooling1D())
+    model.add(Flatten())
+    model.add(Dense(300, activation='relu'))
+    # model.add(Dense(1000, activation='relu'))
+    # model.add(Dense(1000, activation='relu'))
+    # model.add(Dense(500, activation='relu'))
+    # model.add(Dense(100, activation='relu'))
+    model.add(Dense(1, activation='linear'))
+    # model.compile(loss='mean_absolute_percentage_error',
+    #           optimizer='adam',
+    #           metrics=['mae'])
     return model
     
 
 
 if __name__ == '__main__':
-    model = cnn_model()
-    X, y = toy_data()
-    model.fit(X, y, epochs=10)
-    # print X.shape, y.shape
-    # model.fit_generator(get_data(), steps_per_epoch=1000, epochs=30)
-    # print X[0]
-    # gen = get_data()
-    # X, y = gen.next()
-    # print model.predict(X)
-    print y
+    X, y = get_daily()
+    model = daily_cnn_model()
+    # model = load_model('try2.h5')
+    model.compile(loss='mean_squared_error',
+              optimizer='adam',
+              metrics=['mae', 'mean_absolute_percentage_error'])
+    num_epochs = 1
+    for epoch in xrange(num_epochs):
+    # # X, y = toy_data()
+        model.fit(X, y, epochs=1, batch_size=10)
+    #     model.save('cls{}_{}.h5'.format(epoch+1, time.time()))
+    # error = 0
+    # num_test = 1000
+    # norm_num = 1
+    # for i in tqdm.tqdm(xrange(num_test)):
+    #     ind = int(random.random()*len(X))
+    #     if ind+60 < len(X):
+    #         # guess price an hour from now
+    #         els = list((X[ind]+3000)*3000)
+    #         for j in xrange(59):
+    #             guess = model.predict(np.array(els).reshape(1, 400, 1))[0][0]
+    #             els.append(guess)
+    #             els.pop(0)
+    #         guess = model.predict(np.array(els).reshape(1, 400, 1))[0][0]
+    #         actual = (y[ind+60][0]+3000)*3000
+    #         error += (guess-actual)
+    # print 'Avg Error:', error/num_test*norm_num
+    # # print X.shape, y.shape
+    # # model.fit_generator(get_data(), steps_per_epoch=1000, epochs=30)
+    # # print X[0]
+    # # gen = get_data()
+    # # X, y = gen.next()
+    # # print model.predict(X), y
