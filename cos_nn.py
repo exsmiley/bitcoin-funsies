@@ -37,8 +37,8 @@ class CosModel(object):
         self.saver = tf.train.Saver()
 
     def learn(self, x, y, batch_size=10):
-        x = np.array(x).reshape(batch_size, -1, 2)
-        y = np.array(y).reshape(batch_size, -1, 2)
+        x = np.array(x).reshape(-1, batch_size, 2)
+        y = np.array(y).reshape(-1, batch_size, 2)
         losses = []
         for i in xrange(batch_size):
             loss, train = self.session.run([self.loss, self.train], feed_dict={
